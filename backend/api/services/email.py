@@ -1,10 +1,13 @@
 import base64
+import logging
 from datetime import datetime
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import (
     Mail, Attachment, FileContent, FileName, FileType, Disposition,
 )
 from ..config import settings
+
+logger = logging.getLogger(__name__)
 
 
 def _fmt(iso: str) -> str:
@@ -47,8 +50,17 @@ def send_timesheet_email(
     )
     message.attachment = attachment
 
+    logger.info("Sending timesheet email to %s for period %s – %s", recipient_email, period_start, period_end)
+
     client = SendGridAPIClient(settings.sendgrid_api_key)
     response = client.send(message)
+
+    logger.info(
+        "SendGrid response: status=%s headers=%s body=%s",
+        response.status_code,
+        dict(response.headers),
+        response.body,
+    )
 
     if response.status_code not in (200, 201, 202):
         raise RuntimeError(f"SendGrid error {response.status_code}: {response.body}")
