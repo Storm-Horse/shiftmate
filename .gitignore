@@ -2,6 +2,8 @@
 __pycache__/
 *.pyc
 .venv/
+backend/.venv/
+backend/shiftmate.db
 *.egg-info/
 dist/
 .env

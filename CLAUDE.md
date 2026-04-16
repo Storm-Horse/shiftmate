@@ -18,7 +18,10 @@ Core workflow:
 
 ## Stack
 
-TBD — decide before writing any code.
+- **Backend:** Python 3.12 + FastAPI + SQLite (SQLAlchemy 2, no Docker needed)
+- **Frontend:** React 18 + Vite + Tailwind CSS (mobile-first PWA)
+- **Email:** SendGrid API
+- **Spreadsheet:** openpyxl (.xlsx)
 
 ## Project structure
 
@@ -39,7 +42,23 @@ shiftmate/
 
 ## Running locally
 
-TBD
+**Prerequisites:** Python 3.12+, Node.js 18+
+
+```bash
+# Backend
+cd backend
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.template .env    # fill in SENDGRID_API_KEY and SENDGRID_FROM_EMAIL
+uvicorn api.main:app --reload --port 8000
+
+# Frontend (separate terminal)
+cd frontend
+npm install
+npm run dev              # http://localhost:5173
+```
+
+API docs: http://localhost:8000/api/docs
 
 ## Notes
 
