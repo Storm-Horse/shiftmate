@@ -229,6 +229,10 @@ def generate_excel(user, shifts, period_start: str, period_end: str) -> bytes:
             if monday <= _iso_to_date(s.date) <= sunday
         ]
 
+        # Skip weeks with no shifts (avoids blank leading sheets)
+        if not week_shifts:
+            continue
+
         sheet_name = f"Week {monday.strftime('%-d %b')}"
         ws = wb.create_sheet(title=sheet_name)
         _build_week_sheet(ws, user, monday, sunday, week_shifts)
