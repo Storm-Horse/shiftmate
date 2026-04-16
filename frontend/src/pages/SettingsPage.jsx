@@ -4,10 +4,6 @@ import api from '../services/api'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 
-const DAYS_OF_WEEK = [
-  'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday',
-]
-
 const DAY_OPTIONS = Array.from({ length: 28 }, (_, i) => i + 1)
 
 const ordinal = (n) => {
@@ -46,7 +42,7 @@ export default function SettingsPage() {
         employer: form.employer || null,
         recipient_email: form.recipient_email || null,
         pay_period_type: form.pay_period_type,
-        pay_period_value: Number(form.pay_period_value),
+        pay_period_value: form.pay_period_type === 'weekly' ? 0 : Number(form.pay_period_value),
         pay_period_anchor: form.pay_period_type === 'fortnightly'
           ? form.pay_period_anchor || null
           : null,
@@ -144,20 +140,6 @@ export default function SettingsPage() {
             </select>
           </div>
 
-          {form.pay_period_type === 'weekly' && (
-            <div>
-              <label className="block text-xs font-medium text-slate-500 mb-1">Week starts on</label>
-              <select
-                value={form.pay_period_value}
-                onChange={(e) => set('pay_period_value', Number(e.target.value))}
-                className="w-full border border-slate-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-              >
-                {DAYS_OF_WEEK.map((d, i) => (
-                  <option key={d} value={i}>{d}</option>
-                ))}
-              </select>
-            </div>
-          )}
 
           {form.pay_period_type === 'fortnightly' && (
             <div>
