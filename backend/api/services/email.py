@@ -1,10 +1,11 @@
-import base64
 import logging
+import smtplib
+import ssl
 from datetime import datetime
-from sendgrid import SendGridAPIClient
-from sendgrid.helpers.mail import (
-    Mail, Attachment, FileContent, FileName, FileType, Disposition,
-)
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.base import MIMEBase
+from email import encoders
 from ..config import settings
 
 logger = logging.getLogger(__name__)
@@ -21,12 +22,11 @@ def send_timesheet_email(
     period_end: str,
     excel_bytes: bytes,
 ) -> None:
-    if not settings.sendgrid_api_key:
-        raise ValueError("SENDGRID_API_KEY is not configured")
+    if not settings.gmail_user or not settings.gmail_app_password:
+        raise ValueError("GMAIL_USER and GMAIL_APP_PASSWORD are not configured")
 
     period_str = f"{_fmt(period_start)} – {_fmt(period_end)}"
     subject = f"Timesheet — {user_name} — {period_str}"
-
     body = (
         f"Hi,\n\n"
         f"Please find attached the timesheet for {user_name} "
@@ -34,33 +34,26 @@ def send_timesheet_email(
         f"This was sent automatically by ShiftMate.\n"
     )
 
-    message = Mail(
-        from_email=(settings.sendgrid_from_email, settings.sendgrid_from_name),
-        to_emails=recipient_email,
-        subject=subject,
-        plain_text_content=body,
-    )
+    msg = MIMEMultipart()
+    msg["From"] = settings.gmail_user
+    msg["To"] = recipient_email
+    msg["Subject"] = subject
+    msg.attach(MIMEText(body, "plain"))
 
-    encoded = base64.b64encode(excel_bytes).decode()
-    attachment = Attachment(
-        FileContent(encoded),
-        FileName(f"timesheet_{period_start}_{period_end}.xlsx"),
-        FileType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
-        Disposition("attachment"),
+    attachment = MIMEBase("application", "vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    attachment.set_payload(excel_bytes)
+    encoders.encode_base64(attachment)
+    attachment.add_header(
+        "Content-Disposition",
+        f'attachment; filename="timesheet_{period_start}_{period_end}.xlsx"',
     )
-    message.attachment = attachment
+    msg.attach(attachment)
 
     logger.info("Sending timesheet email to %s for period %s – %s", recipient_email, period_start, period_end)
 
-    client = SendGridAPIClient(settings.sendgrid_api_key)
-    response = client.send(message)
+    context = ssl.create_default_context()
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context) as server:
+        server.login(settings.gmail_user, settings.gmail_app_password)
+        server.sendmail(settings.gmail_user, recipient_email, msg.as_string())
 
-    logger.info(
-        "SendGrid response: status=%s headers=%s body=%s",
-        response.status_code,
-        dict(response.headers),
-        response.body,
-    )
-
-    if response.status_code not in (200, 201, 202):
-        raise RuntimeError(f"SendGrid error {response.status_code}: {response.body}")
+    logger.info("Email sent successfully to %s", recipient_email)

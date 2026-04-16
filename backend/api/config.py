@@ -7,9 +7,8 @@ class Settings(BaseSettings):
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 43200  # 30 days
 
-    sendgrid_api_key: str = ""
-    sendgrid_from_email: str = ""
-    sendgrid_from_name: str = "ShiftMate"
+    gmail_user: str = ""
+    gmail_app_password: str = ""
 
     class Config:
         env_file = ".env"
