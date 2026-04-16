@@ -54,6 +54,13 @@ def run(engine: Engine) -> None:
                 if col not in existing:
                     conn.execute(sql)
 
+        # Data migrations
+        if "users" in existing_tables:
+            # Ensure all weekly users start on Monday (pay_period_value=0)
+            conn.execute(
+                "UPDATE users SET pay_period_value = 0 WHERE pay_period_type = 'weekly'"
+            )
+
         conn.commit()
     finally:
         conn.close()
