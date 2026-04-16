@@ -8,7 +8,9 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 43200  # 30 days
 
     gmail_user: str = ""
-    gmail_app_password: str = ""
+    gmail_client_id: str = ""
+    gmail_client_secret: str = ""
+    gmail_refresh_token: str = ""
 
     class Config:
         env_file = ".env"
