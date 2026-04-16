@@ -1,4 +1,5 @@
-import { createContext, useContext, useState } from 'react'
+import { createContext, useContext, useState, useEffect } from 'react'
+import api from '../services/api'
 
 const AuthContext = createContext(null)
 
@@ -11,6 +12,18 @@ export function AuthProvider({ children }) {
       return null
     }
   })
+
+  // Refresh user data from server on load so cached settings are never stale
+  useEffect(() => {
+    const token = localStorage.getItem('token')
+    if (!token) return
+    api.get('/users/me').then(({ data }) => {
+      localStorage.setItem('user', JSON.stringify(data))
+      setUser(data)
+    }).catch(() => {
+      // Token expired or invalid — leave as-is, route guards will handle it
+    })
+  }, [])
 
   const login = (userData, token) => {
     localStorage.setItem('token', token)
