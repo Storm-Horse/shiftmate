@@ -24,29 +24,6 @@ def _iso_to_date(iso: str) -> date_type:
     return datetime.strptime(iso, "%Y-%m-%d").date()
 
 
-def _fmt_display(d: date_type) -> str:
-    return d.strftime("%d %b %Y")
-
-
-def _week_monday(d: date_type) -> date_type:
-    """Return the Monday of the week containing d."""
-    return d - timedelta(days=d.weekday())
-
-
-def _week_sunday(monday: date_type) -> date_type:
-    return monday + timedelta(days=6)
-
-
-def _weeks_in_period(period_start: str, period_end: str):
-    """Yield (monday, sunday) pairs covering the period."""
-    start = _iso_to_date(period_start)
-    end = _iso_to_date(period_end)
-    monday = _week_monday(start)
-    while monday <= end:
-        yield monday, _week_sunday(monday)
-        monday += timedelta(days=7)
-
-
 # ── Styles ───────────────────────────────────────────────────────────────────
 
 def _thin_border():
@@ -68,7 +45,6 @@ def _apply(cell, value=None, bold=False, size=11, align_h="left", align_v="cente
 
 # ── Week sheet builder ────────────────────────────────────────────────────────
 
-DAYS = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"]
 ROWS_PER_DAY = 5
 COL_WIDTHS = {
     "A": 10.43, "B": 8.43, "C": 12.71, "D": 13.14, "E": 49.43,
@@ -77,10 +53,14 @@ COL_WIDTHS = {
 }
 
 
-def _build_week_sheet(ws, user, monday: date_type, sunday: date_type, week_shifts):
-    """Populate ws with one week of timesheet data matching the original format."""
+def _build_week_sheet(ws, user, block_start: date_type, week_shifts):
+    """Populate ws with one week of timesheet data.
 
+    block_start is the first day of the 7-day pay period block.
+    Days are derived from the actual dates so any start day is handled correctly.
+    """
     border = _thin_border()
+    block_end = block_start + timedelta(days=6)
 
     # ── Row heights ───────────────────────────────────────────────────────────
     ws.row_dimensions[1].height = 29.25
@@ -103,7 +83,7 @@ def _build_week_sheet(ws, user, monday: date_type, sunday: date_type, week_shift
     # ── Row 2: Name / Employer / Week ending ──────────────────────────────────
     ws.merge_cells("A2:L2")
     employer = user.employer or ""
-    week_ending = sunday.strftime("%d/%m/%Y")
+    week_ending = block_end.strftime("%d/%m/%Y")
     header_text = (
         f"NAME :   {user.name.upper()}"
         f"{'        ' + employer.upper() if employer else ''}"
@@ -112,7 +92,6 @@ def _build_week_sheet(ws, user, monday: date_type, sunday: date_type, week_shift
     _apply(ws["A2"], header_text, bold=True, size=12)
 
     # ── Rows 4–5: Column headers (double-row) ─────────────────────────────────
-    # Row 4
     for col, val in [
         ("B", "JOB No"), ("C", "CLIENT"), ("D", "JOB NAME"),
         ("E", "DESCRIPTION OF WORK CARRIED OUT"),
@@ -125,7 +104,6 @@ def _build_week_sheet(ws, user, monday: date_type, sunday: date_type, week_shift
         align_h = "center" if col in ("H", "I", "J", "K", "L") else "left"
         _apply(c, val, bold=True, size=size, align_h=align_h, border=True)
 
-    # Row 5
     _apply(ws["A5"], "DATE", bold=True, size=12, border=True)
     _apply(ws["F5"], "Depart Time", bold=True, size=8, border=True)
     _apply(ws["G5"], "Arrival Time", bold=True, size=8, border=True)
@@ -133,17 +111,16 @@ def _build_week_sheet(ws, user, monday: date_type, sunday: date_type, week_shift
     _apply(ws["L5"], "50KM", bold=True, size=10, align_h="center", border=True)
 
     # ── Day blocks (rows 6–40) ────────────────────────────────────────────────
-    # Group shifts by date (iso string)
     by_date = defaultdict(list)
     for shift in week_shifts:
         by_date[shift.date].append(shift)
 
-    for day_idx, day_name in enumerate(DAYS):
-        day_date = monday + timedelta(days=day_idx)
+    for day_idx in range(7):
+        day_date = block_start + timedelta(days=day_idx)
+        day_name = day_date.strftime("%A").upper()
         row_start = 6 + day_idx * ROWS_PER_DAY
+        is_weekend = day_date.weekday() >= 5  # Sat or Sun
 
-        # Day name label in col A (first row of block)
-        is_weekend = day_idx >= 5
         _apply(
             ws.cell(row=row_start, column=1),
             day_name,
@@ -153,12 +130,10 @@ def _build_week_sheet(ws, user, monday: date_type, sunday: date_type, week_shift
             border=True,
         )
 
-        # Apply border to all cells in the day block
         for r in range(row_start, row_start + ROWS_PER_DAY):
-            for c in range(1, 13):  # A–L
+            for c in range(1, 13):
                 ws.cell(row=r, column=c).border = border
 
-        # Fill in shifts for this day (up to ROWS_PER_DAY)
         day_shifts = by_date.get(day_date.strftime("%Y-%m-%d"), [])
         for i, shift in enumerate(day_shifts[:ROWS_PER_DAY]):
             r = row_start + i
@@ -180,7 +155,7 @@ def _build_week_sheet(ws, user, monday: date_type, sunday: date_type, week_shift
             h_cell.value = hours
             h_cell.font = Font(size=10)
             h_cell.alignment = Alignment(horizontal="center", vertical="center")
-            h_cell.number_format = "0.##"  # shows 7.5 not 7.50, matches original
+            h_cell.number_format = "0.##"
 
     # ── Row 41: NOTES ─────────────────────────────────────────────────────────
     ws.merge_cells("A41:L41")
@@ -195,7 +170,6 @@ def _build_week_sheet(ws, user, monday: date_type, sunday: date_type, week_shift
     ws.merge_cells("A42:G42")
     _apply(ws["A42"], f"TOTAL HOURS :   {round(total, 2)}", bold=True, size=11, border=True)
 
-    # Job breakdown
     job_totals = defaultdict(float)
     for s in week_shifts:
         job_totals[s.job_name] += compute_hours(
@@ -211,31 +185,30 @@ def _build_week_sheet(ws, user, monday: date_type, sunday: date_type, week_shift
 
 def generate_excel(user, shifts, period_start: str, period_end: str) -> bytes:
     """Generate an xlsx matching the original timesheet format.
-    One sheet per Mon–Sun week covering the period.
+    One sheet per 7-day block of the pay period, starting from period_start.
+    This avoids splitting shifts across Mon-Sun calendar weeks.
     """
     wb = openpyxl.Workbook()
-    wb.remove(wb.active)  # remove default sheet; we'll add our own
+    wb.remove(wb.active)
 
-    # Index shifts by date string for fast lookup
-    by_date = defaultdict(list)
-    for shift in shifts:
-        by_date[shift.date].append(shift)
+    start = _iso_to_date(period_start)
+    end = _iso_to_date(period_end)
 
-    weeks = list(_weeks_in_period(period_start, period_end))
-    for monday, sunday in weeks:
-        # Collect shifts that fall within this Mon–Sun week
-        week_shifts = [
+    block_start = start
+    while block_start <= end:
+        block_end = block_start + timedelta(days=6)
+
+        block_shifts = [
             s for s in shifts
-            if monday <= _iso_to_date(s.date) <= sunday
+            if block_start <= _iso_to_date(s.date) <= block_end
         ]
 
-        # Skip weeks with no shifts (avoids blank leading sheets)
-        if not week_shifts:
-            continue
+        if block_shifts:
+            sheet_name = f"Week {block_start.strftime('%-d %b')}"
+            ws = wb.create_sheet(title=sheet_name)
+            _build_week_sheet(ws, user, block_start, block_shifts)
 
-        sheet_name = f"Week {monday.strftime('%-d %b')}"
-        ws = wb.create_sheet(title=sheet_name)
-        _build_week_sheet(ws, user, monday, sunday, week_shifts)
+        block_start += timedelta(days=7)
 
     buf = BytesIO()
     wb.save(buf)
