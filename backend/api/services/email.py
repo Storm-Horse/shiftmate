@@ -52,7 +52,10 @@ def send_timesheet_email(
     logger.info("Sending timesheet email to %s for period %s – %s", recipient_email, period_start, period_end)
 
     context = ssl.create_default_context()
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context) as server:
+    with smtplib.SMTP("smtp.gmail.com", 587, timeout=15) as server:
+        server.ehlo()
+        server.starttls(context=context)
+        server.ehlo()
         server.login(settings.gmail_user, settings.gmail_app_password)
         server.sendmail(settings.gmail_user, recipient_email, msg.as_string())
 
