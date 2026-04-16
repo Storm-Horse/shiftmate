@@ -7,10 +7,7 @@ class Settings(BaseSettings):
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 43200  # 30 days
 
-    gmail_user: str = ""
-    gmail_client_id: str = ""
-    gmail_client_secret: str = ""
-    gmail_refresh_token: str = ""
+    resend_api_key: str = ""
 
     class Config:
         env_file = ".env"
