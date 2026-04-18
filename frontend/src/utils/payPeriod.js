@@ -1,9 +1,16 @@
-const toISO = (d) => d.toISOString().split('T')[0]
+const toISO = (d) => {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
 
-const addDays = (d, n) => {
-  const r = new Date(d)
-  r.setDate(r.getDate() + n)
-  return r
+const addDays = (isoOrDate, n) => {
+  const d = typeof isoOrDate === 'string'
+    ? new Date(isoOrDate + 'T00:00:00')
+    : new Date(isoOrDate)
+  d.setDate(d.getDate() + n)
+  return d
 }
 
 // Always Mon–Sun weekly period
