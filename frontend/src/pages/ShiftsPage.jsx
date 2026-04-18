@@ -11,11 +11,6 @@ function addDays(iso, n) {
   return d.toISOString().split('T')[0]
 }
 
-function periodLength(user) {
-  if (user.pay_period_type === 'weekly') return 7
-  if (user.pay_period_type === 'fortnightly') return 14
-  return null // monthly: variable
-}
 
 function groupByDate(shifts) {
   const map = {}
@@ -28,7 +23,7 @@ function groupByDate(shifts) {
 
 export default function ShiftsPage() {
   const { user } = useAuth()
-  const [period, setPeriod] = useState(() => getCurrentPeriod(user))
+  const [period, setPeriod] = useState(() => getCurrentPeriod())
   const [shifts, setShifts] = useState([])
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
@@ -56,21 +51,7 @@ export default function ShiftsPage() {
   }
 
   const navigate = (dir) => {
-    const len = periodLength(user)
-    if (len) {
-      setPeriod({ start: addDays(period.start, dir * len), end: addDays(period.end, dir * len) })
-    } else {
-      // monthly: move by one month
-      const [y, m, d] = period.start.split('-').map(Number)
-      const newMonth = m + dir
-      const newYear = newMonth < 1 ? y - 1 : newMonth > 12 ? y + 1 : y
-      const clampedMonth = ((newMonth - 1 + 12) % 12) + 1
-      const newStart = `${newYear}-${String(clampedMonth).padStart(2, '0')}-${String(d).padStart(2, '0')}`
-      const nextMonth = clampedMonth + 1 > 12 ? 1 : clampedMonth + 1
-      const nextYear = clampedMonth + 1 > 12 ? newYear + 1 : newYear
-      const newEnd = new Date(nextYear, nextMonth - 1, d - 1).toISOString().split('T')[0]
-      setPeriod({ start: newStart, end: newEnd })
-    }
+    setPeriod({ start: addDays(period.start, dir * 7), end: addDays(period.end, dir * 7) })
   }
 
   const deleteShift = async (id) => {

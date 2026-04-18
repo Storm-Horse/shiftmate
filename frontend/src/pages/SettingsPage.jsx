@@ -4,14 +4,6 @@ import api from '../services/api'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 
-const DAY_OPTIONS = Array.from({ length: 28 }, (_, i) => i + 1)
-
-const ordinal = (n) => {
-  const s = ['th', 'st', 'nd', 'rd']
-  const v = n % 100
-  return n + (s[(v - 20) % 10] || s[v] || s[0])
-}
-
 export default function SettingsPage() {
   const { user, updateUser, logout } = useAuth()
   const navigate = useNavigate()
@@ -19,9 +11,6 @@ export default function SettingsPage() {
     name: user.name,
     employer: user.employer || '',
     recipient_email: user.recipient_email || '',
-    pay_period_type: user.pay_period_type || 'weekly',
-    pay_period_value: user.pay_period_value ?? 0,
-    pay_period_anchor: user.pay_period_anchor || '',
   })
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState(null)
@@ -41,11 +30,9 @@ export default function SettingsPage() {
         name: form.name,
         employer: form.employer || null,
         recipient_email: form.recipient_email || null,
-        pay_period_type: form.pay_period_type,
-        pay_period_value: form.pay_period_type === 'weekly' ? 0 : Number(form.pay_period_value),
-        pay_period_anchor: form.pay_period_type === 'fortnightly'
-          ? form.pay_period_anchor || null
-          : null,
+        pay_period_type: 'weekly',
+        pay_period_value: 0,
+        pay_period_anchor: null,
       }
       const { data } = await api.patch('/users/me', payload)
       updateUser(data)
@@ -67,7 +54,6 @@ export default function SettingsPage() {
       <h1 className="text-2xl font-bold text-slate-900 mb-5">Settings</h1>
 
       <form onSubmit={save} className="space-y-5">
-        {/* Profile */}
         <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3">
           <h2 className="font-semibold text-slate-700 text-sm uppercase tracking-wide">Profile</h2>
 
@@ -95,9 +81,7 @@ export default function SettingsPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1">
-              Login email
-            </label>
+            <label className="block text-xs font-medium text-slate-500 mb-1">Login email</label>
             <input
               type="email"
               disabled
@@ -123,58 +107,6 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* Pay period */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3">
-          <h2 className="font-semibold text-slate-700 text-sm uppercase tracking-wide">Pay period</h2>
-
-          <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1">Cycle</label>
-            <select
-              value={form.pay_period_type}
-              onChange={(e) => set('pay_period_type', e.target.value)}
-              className="w-full border border-slate-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-            >
-              <option value="weekly">Weekly</option>
-              <option value="fortnightly">Fortnightly</option>
-              <option value="monthly">Monthly</option>
-            </select>
-          </div>
-
-
-          {form.pay_period_type === 'fortnightly' && (
-            <div>
-              <label className="block text-xs font-medium text-slate-500 mb-1">
-                Start of a known pay period
-              </label>
-              <input
-                type="date"
-                required
-                value={form.pay_period_anchor}
-                onChange={(e) => set('pay_period_anchor', e.target.value)}
-                className="w-full border border-slate-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <p className="text-xs text-slate-400 mt-1">
-                Pick any Monday (or first day) that your pay period starts on — all future periods are calculated from this.
-              </p>
-            </div>
-          )}
-
-          {form.pay_period_type === 'monthly' && (
-            <div>
-              <label className="block text-xs font-medium text-slate-500 mb-1">Period starts on the</label>
-              <select
-                value={form.pay_period_value}
-                onChange={(e) => set('pay_period_value', Number(e.target.value))}
-                className="w-full border border-slate-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-              >
-                {DAY_OPTIONS.map((d) => (
-                  <option key={d} value={d}>{ordinal(d)} of each month</option>
-                ))}
-              </select>
-            </div>
-          )}
-        </div>
-
         <button
           type="submit"
           disabled={saving}
@@ -184,7 +116,6 @@ export default function SettingsPage() {
         </button>
       </form>
 
-      {/* Logout */}
       <button
         onClick={handleLogout}
         className="w-full mt-4 flex items-center justify-center gap-2 border border-slate-300 text-slate-600 font-semibold rounded-xl py-3.5 hover:bg-slate-50 active:bg-slate-100 transition-colors"
@@ -193,7 +124,6 @@ export default function SettingsPage() {
         Sign out
       </button>
 
-      {/* Toast */}
       {toast && (
         <div
           className={`fixed bottom-24 inset-x-4 max-w-sm mx-auto flex items-center gap-2 px-4 py-3 rounded-xl shadow-lg text-white text-sm font-medium z-50 ${
